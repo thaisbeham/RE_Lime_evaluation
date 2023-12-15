@@ -1,3 +1,5 @@
+------- Original README from AGGCN can be found in https://github.com/Cartus/AGGCN/blob/master/semeval/README.md
+
 AGGCN for SemEval task 8
 ==========
   
