@@ -23,16 +23,33 @@ For the evaluation of the Neural model, AGGCN was chosen. The acronym stands for
 Model Repository: https://github.com/Cartus/AGGCN/tree/master/semeval 
 
 ### Requirements
-python 3.9.6
+Create a conda environment using python version 3.10.13
 
-tensorflow 2.12.0
+```
+conda create --name myenv python=3.10.13
+```
 
-torch 2.0.1
+Activate environment
 
-No need to re-train the model, please only follow the steps from the section "Preparation".
+```
+conda activate myenv
+```
+
+Install requirements
+
+```
+pip install -r requirements.txt
+```
 
 ### Preparation 
-Please follow these steps if the  GloVe vectors and Vocabulary are not present in the folder `/dataset` folder. Instructions extracted from https://github.com/Cartus/AGGCN/tree/master/semeval :
+
+First please ensure that you are inside AGGCN directory, all the steps in this section are runned inside this directory.
+
+```
+cd AGGCN
+```
+
+Please follow these steps if the  GloVe vectors and Vocabulary are not present in the directory `/dataset`  (Instructions extracted from https://github.com/Cartus/AGGCN/tree/master/semeval) :
 
 #### Dataset
 Datasets in JSON format are already put under the directory  `Data/`.
@@ -43,7 +60,6 @@ If GloVe vectors are not present in the folder `dataset/glove/` nor vocab in the
 First, download and unzip GloVe vectors:
 
 ```
-cd AGGCN
 chmod +x download.sh; ./download.sh
 ```
 
@@ -52,24 +68,18 @@ Then prepare vocabulary and initial word vectors with:
 (Be sure you are inside the AGGCN directory)
 
 ```
-
 python3 prepare_vocab.py dataset/semeval dataset/vocab --glove_dir dataset/glove
 ```
 
 This will write vocabulary and word vectors as a numpy matrix into the dir `dataset/vocab`.
 
 #### Universal Sentence Encoder
-If there is no directory tf_hub_model or it is empty, please run the following Python code
+If there is no directory tf_hub_model or it is empty, please run the following Python file
 
-```python
-import tensorflow_hub as hub
-import tensorflow as tf
 
-module_url = "https://tfhub.dev/google/universal-sentence-encoder/4" 
-model = hub.load(module_url)
-print ("module %s loaded" % module_url)
 
-tf.saved_model.save(model, "../tf_hub_model/") """
+```
+python tf_hub_load_model.py
 ```
 
 ## Naive Bayes

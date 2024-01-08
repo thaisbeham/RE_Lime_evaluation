@@ -134,10 +134,6 @@ class ExtendedLimeTextExplainer(LimeTextExplainer):
         inverse_data = [indexed_string.raw_string()]
         data = np.ones((num_samples, doc_size)) 
         data[0] = np.ones(doc_size)
-       
-        # update exception words position since lime split and counts only words, not punctuation
-        # lime also remove duplicated words, leaving only one word each type
-        words_with_punct =  inverse_data[0].split()
         
         cleaned_sentence = re.sub(r'[^a-zA-Z0-9\s]', '', inverse_data[0])
         words_clean = cleaned_sentence.split()
@@ -145,17 +141,16 @@ class ExtendedLimeTextExplainer(LimeTextExplainer):
         unique_words_set = set()
         unique_words_list = []
 
+        #ensure no repetition of words
         for word in words_clean:
             if word not in unique_words_set:
                 unique_words_set.add(word)
                 unique_words_list.append(word)
 
-        exception_word1_old = words_with_punct[self.exception_words[0]]
-        exception_word2_old = words_with_punct[self.exception_words[1]]
 
-        exception_word1_new_position = unique_words_list.index(exception_word1_old)
-        exception_word2_new_position = unique_words_list.index(exception_word2_old)
-
+        exception_word1_new_position = unique_words_list.index(self.exception_words[0])
+        exception_word2_new_position = unique_words_list.index(self.exception_words[1])
+       
         new_exception_words_position = (exception_word1_new_position, exception_word2_new_position )
 
         if doc_size >= 3:
