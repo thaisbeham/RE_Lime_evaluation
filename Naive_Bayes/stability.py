@@ -14,7 +14,6 @@ import pandas as pd
 import re
 import seaborn as sns
 import rbo
-import matplotlib.pyplot as plt
 import numpy as np
 import lime
 #from lime.lime_text import LimeTextExplainer
@@ -44,10 +43,11 @@ model = tf.saved_model.load('../tf_hub_model/')
 #rates =[1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000 ]
 
 # for testing, to speed
-rates = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100 ]
+rates = [500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000]
+
 
 #one different random seed
-seeds = [random.randint(0, (2**32 - 1)) for _ in range(2)]
+seeds = seeds = [1, 28989]
 
 
 def rbo_per_array( arrays):
@@ -69,18 +69,24 @@ def rbo_per_array( arrays):
     return rbo_data
 
 def mean_all_inhe_stability(samples):
-    all_data_seed1= []
-    all_data_seed2 =[]
-    for sample in samples:
-        arrays = Stability(sample).change_sampling_rate_seed()
-        inherent_stability_data = rbo_per_array(arrays)
-        all_data_seed1.append(inherent_stability_data['seed1'])
-        all_data_seed2.append(inherent_stability_data['seed2'])
+    all_data_seed1 = []
+    all_data_seed2 = []
+    total_arrays = []
+
+    for index, sample in samples.iterrows():
+        try:
+            arrays = Stability(sample).change_sampling_rate_seed()
+            inherent_similarity_data = rbo_per_array(arrays)
+            all_data_seed1.append(inherent_similarity_data['seed1'])
+            all_data_seed2.append(inherent_similarity_data['seed2'])
+            total_arrays.append(arrays)
+        except Exception as e:
+            print(f"Error processing sample {index}: {e}")
 
     mean_seed1 = np.mean(all_data_seed1, axis=0) 
     mean_seed2 = np.mean(all_data_seed2, axis=0)
 
-    return mean_seed1, mean_seed2
+    return mean_seed1, mean_seed2, total_arrays
 
 def plot_grap_stability_inhe(x, y1, y2):
 
@@ -94,25 +100,28 @@ def plot_grap_stability_inhe(x, y1, y2):
 
 
     # Set axis limits to start at zero
-    plt.xlim(0, max(x)+ 2)
+    plt.xlim(0, max(x)+ 500)
     plt.ylim(0, max(max(y1), max(y2)) + 0.2)
 
 
     # Customize the plot (labels, title, legend, etc.)
     plt.xlabel('Sampling rates')
     plt.ylabel('RBO (p=0.8)')
-    plt.title('Inherent Stability')
+    plt.title('Inherent Stability - Naive Bayes')
     plt.legend()
 
     # Show the plot
     plt.grid(True)
+    plt.savefig('output_plot.png')
     plt.show()
 
 def rate_succeful_attackss(samples):
     
     fail_attack = 0
     succeful_attack = 0
-    for sample in samples:
+    RBO_total = []
+    for index, sample in samples.iterrows():
+    #for sample in samples:
     # try:
         RBO_sim = Stability(sample).similarity_attack()
         #print(RBO_sim)
@@ -122,10 +131,57 @@ def rate_succeful_attackss(samples):
             fail_attack += 1
         else:
             succeful_attack += 1
+        RBO_total.append(RBO_sim)
 
     final_rate = succeful_attack / (succeful_attack + fail_attack)
 
-    return final_rate
+    return final_rate, RBO_total
+
+def rate_succeful_attackss(samples):
+    i = 0
+    fail_attack = 0
+    succeful_attack = 0
+    RBO_total = []
+    errors = []
+    index_ = []
+    RBO_total_backup = []
+    for index, sample in samples.iterrows():
+
+        try:
+            RBO_sim = Stability(sample).similarity_attack(rate= 2000)
+            #print(RBO_sim)
+            #except:
+            #   continue
+            # Save to CSV every 5 iterations
+            RBO_total.append(RBO_sim)
+            RBO_total_backup.append(RBO_sim)
+
+            if RBO_sim > 0.5:
+                fail_attack += 1
+            else:
+                succeful_attack += 1
+
+            if (i + 1) % 5 == 0 or i == len(samples) - 1:
+                data = {'RBO_sim': RBO_total}
+                df = pd.DataFrame(data)
+                df.to_csv("RBO_sim.csv", mode='a', header=False, index=False)
+
+                RBO_total = []
+            i = i +1
+
+        except Exception as e:
+            print(f"######## Skipping sentence: {sample}. Error: {e}")
+            index_.append(i)
+            errors.append(e)
+            errors_df = pd.DataFrame({"index":index_,
+                                        "error":errors}) 
+            errors_df.to_csv("errors_stability_parameter.csv", mode='a')
+            
+    final_rate = succeful_attack / (succeful_attack + fail_attack)
+    
+    
+    return final_rate, RBO_total_backup
+
 class Stability:
     def __init__(self, sample):
         self.subj_start = sample.subj_start
@@ -144,7 +200,7 @@ class Stability:
             for rate in rates:
                 #print(seed)
                 explainer = ExtendedLimeTextExplainer(class_names=class_labels, random_state= seed)       
-                exp = explainer.explain_instance(self.sentence, c.predict_proba, num_features=number_of_tokens, num_samples=rate, exception_words=(self.subj_start, self.obj_start))
+                exp = explainer.explain_instance(self.sentence, c.predict_proba, num_features=number_of_tokens, num_samples=rate, exception_words=(self.subj_entity_word, self.obj_entity_word))
                 most_important_words = self.get_most_important_words(self.sentence, exp)
                 words_per_sampling_rate.append(most_important_words)
 
@@ -249,15 +305,13 @@ class Stability:
     def similarity_attack(self, rate = 10):
         # sampling rate 'num_samples' set to 10 for speed propose
 
-        exp = explainer.explain_instance(self.sentence, c.predict_proba, num_features=num_feat, num_samples=rate, exception_words=(self.subj_start, self.obj_start))
+        exp = explainer.explain_instance(self.sentence, c.predict_proba, num_features=num_feat, num_samples=rate, exception_words=(self.subj_entity_word, self.obj_entity_word))
         important_words_base = self.get_most_important_words(self.sentence, exp)
         perturbed_sentence = self.substitute_words_stability(self.sentence, important_words_base)
         #print("pertubed sentence: ", perturbed_sentence)
 
         splitted_pert_sentence = perturbed_sentence.split()
-        new_subj_start = splitted_pert_sentence.index(self.subj_entity_word)
-        new_obj_start = splitted_pert_sentence.index(self.obj_entity_word)
-        exp_p = explainer.explain_instance(perturbed_sentence, c.predict_proba, num_features=num_feat,  num_samples=rate, exception_words=(new_subj_start, new_obj_start))
+        exp_p = explainer.explain_instance(perturbed_sentence, c.predict_proba, num_features=num_feat,  num_samples=rate, exception_words=(self.subj_entity_word, self.obj_entity_word))
         
         # important words is actually the result of the explanation from LIME
         #for both (pertubed and not pertubed the entities are added)
