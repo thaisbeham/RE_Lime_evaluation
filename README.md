@@ -151,10 +151,6 @@ Steps:
 * Repeat the process until the similarity is lowest possible but above 0.5, or after 5 iterations. Outputs the perturbed sentence.
 * Calculate the explanation for the original and perturbed sentence, and compare the results using RBO. If RBO < 0.5, the "attack" was successful, meaning that the perturbed sentence performed significantly differently from the original one. 
 * With the function rate_succeful_attackss, repeat the above steps for several sentences and get the percentage of successful attacks.
-### Intuitiveness 
-It is a qualitative metric that analyzes whether the selected features by LIME are reasonable with reality. It means that the features should agree with human intuition about the class output. In other words, is evaluated to which degree the rationals agree with the relation class.
-
-
 
 
 
